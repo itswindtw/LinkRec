@@ -40,7 +40,7 @@ object LinkRec {
     val productToInt: RDD[(String, Long)] = trainingData.map(_.product).distinct().zipWithUniqueId()
     val intToProduct: RDD[(Long, String)] = productToInt map { case (l, r) => (r, l) }
     val map: Map[String, Int] = productToInt.mapValues(_.toInt).collect().toMap
-    val reversedMap: Map[Long, String] = intToProduct.collect().toMapl
+    val reversedMap: Map[Long, String] = intToProduct.collect().toMap
 
     val trainingRating: RDD[Rating] = trainingData.map { r =>
       Rating(r.userId, map(r.product), r.rating)
@@ -98,7 +98,7 @@ object LinkRec {
 
   def loadDataFromDB(sc: SparkContext): RDD[(Int, String, String, Long)] = {
     val conf = HBaseConfiguration.create()
-    conf.set(TableInputFormat.INPUT_TABLE, "l")
+    conf.set(TableInputFormat.INPUT_TABLE, "linkrec")
 
     val hBaseRDD = sc.newAPIHadoopRDD(conf, classOf[TableInputFormat],
       classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
