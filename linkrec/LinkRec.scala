@@ -10,6 +10,8 @@ import org.apache.hadoop.hbase.{HBaseConfiguration, HTableDescriptor, TableName}
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat
 import org.apache.hadoop.hbase.CellUtil
 import org.apache.hadoop.hbase.util.Bytes
+// import org.apache.hadoop.hbase.mapred.TableInputFormat
+// import org.apache.hadoop.mapred.JobConf
 
 object LinkRec {
   case class MyRating(userId: Int, product: String, rating: Double);
@@ -98,7 +100,16 @@ object LinkRec {
 
   def loadDataFromDB(sc: SparkContext): RDD[(Int, String, String, Long)] = {
     val conf = HBaseConfiguration.create()
+
     conf.set(TableInputFormat.INPUT_TABLE, "linkrec")
+    // conf.set(TableInputFormat.SCAN_COLUMN_FAMILY, "link")
+
+    // conf.set("hbase.mapred.inputtable", "linkrec")
+    // conf.set("hbase.mapred.tablecolumns", "link")
+
+    // val hBaseRDD = sc.hadoopRDD(new JobConf(conf), classOf[TableInputFormat],
+    //   classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
+    //   classOf[org.apache.hadoop.hbase.client.Result])
 
     val hBaseRDD = sc.newAPIHadoopRDD(conf, classOf[TableInputFormat],
       classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
@@ -106,7 +117,7 @@ object LinkRec {
 
     val ratings = hBaseRDD.map(_._2).map(_.raw())
                   .flatMap(_.map( cell => (
-                          Bytes.toInt(CellUtil.cloneRow(cell)),
+                          Bytes.toString(CellUtil.cloneRow(cell)).toInt,
                           Bytes.toString(CellUtil.cloneQualifier(cell)),
                           Bytes.toString(CellUtil.cloneValue(cell)),
                           cell.getTimestamp()) ))
