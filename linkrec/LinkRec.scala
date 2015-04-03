@@ -11,7 +11,7 @@ import org.apache.hadoop.hbase.mapreduce.TableInputFormat
 import org.apache.hadoop.hbase.CellUtil
 import org.apache.hadoop.hbase.util.Bytes
 
-case class MyRating(userId: Int, url: String, title: String, time: Long)
+case class MyRating(userId: Int, link: MyLink, time: Long)
 case class MyLink(url: String, title: String) extends Ordered[MyLink] {
   def compare(another: MyLink): Int = this.url compare another.url
 }
@@ -26,7 +26,11 @@ object LinkRec {
     }
 
     // set up environment
-    val conf: SparkConf = new SparkConf().setAppName("LinkRec")
+    val conf: SparkConf = new SparkConf()
+                            .setAppName("LinkRec")
+                            .setMaster("local[*]")
+                            .set("spark.ui.enabled", "false")
+
     val sc: SparkContext = new SparkContext(conf)
 
     // load data, data in MyRating
@@ -37,7 +41,7 @@ object LinkRec {
     // data.collect().foreach(println)
 
     // create mapping
-    val allLinks = trainingData.map(r => MyLink(r.url, r.title)).distinct()
+    val allLinks = trainingData.map(_.link).distinct()
 
     val linkToInt: RDD[(MyLink, Long)] = allLinks.zipWithUniqueId()
     val intToLink: RDD[(Long, MyLink)] = linkToInt map { case (l, r) => (r, l) }
@@ -47,7 +51,7 @@ object LinkRec {
     val reversedLinkMap = intToLink.collectAsMap
 
     val trainingRating: RDD[Rating] = trainingData.map { r =>
-      Rating(r.userId, linkMap(MyLink(r.url, r.title)), 1.0)
+      Rating(r.userId, linkMap(r.link), 1.0)
     }
 
     // println("[XC] trainingData: ")
@@ -61,7 +65,7 @@ object LinkRec {
     // get target user id
     val userId = args(0).toInt
 
-    val sharedLinks = trainingData.filter(_.userId == userId).map(r => MyLink(r.url, r.title))
+    val sharedLinks = trainingData.filter(_.userId == userId).map(_.link)
     val unsharedLinks = allLinks.subtract(sharedLinks)
 
     val userData = unsharedLinks.map(l => (userId, linkMap(l)))
@@ -103,8 +107,9 @@ object LinkRec {
                     .flatMap(_.map (cell =>
                       MyRating(
                         Bytes.toString(CellUtil.cloneRow(cell)).toInt,
-                        Bytes.toString(CellUtil.cloneQualifier(cell)),
-                        Bytes.toString(CellUtil.cloneValue(cell)),
+                        MyLink(
+                            Bytes.toString(CellUtil.cloneQualifier(cell)),
+                            Bytes.toString(CellUtil.cloneValue(cell))),
                         cell.getTimestamp())))
 
     return ratings
