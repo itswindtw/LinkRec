@@ -60,7 +60,7 @@ object LinkRec {
 
     // recommendation
     logger.warn("start prediction")
-    val predictions = model.predict(userData).collect().filter(_.rating >= 0).sortBy(-_.rating).take(50)
+    val predictions = model.predict(userData).filter(_.rating >= 0).sortBy(-_.rating).take(50)
     logger.warn(predictions.mkString("\n"))
 
     val reclinks = predictions.map(_.product)
@@ -94,7 +94,7 @@ object LinkRec {
       classOf[org.apache.hadoop.hbase.io.ImmutableBytesWritable],
       classOf[org.apache.hadoop.hbase.client.Result])
 
-    val ratings = hBaseRDD.map(_._2).map(_.raw())
+    val ratings = hBaseRDD.map(item => item._2.raw())
                   .flatMap(_.map( cell => (
                           Bytes.toString(CellUtil.cloneRow(cell)), 
                           Bytes.toString(CellUtil.cloneQualifier(cell)),
